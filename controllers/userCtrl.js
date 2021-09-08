@@ -3,6 +3,7 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
+const { Mongoose } = require('mongoose');
 
 const { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } = process.env;
 
@@ -44,6 +45,38 @@ const userCtrl = {
       return res.status(500).json({ msg: error.message });
     }
   },
+  login: async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      const user = await User.findOne({ email });
+      if (!user) return res.status(400).json({ msg: 'user does not exit.' });
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) return res.status(400).json({ msg: 'Incorrect password.' });
+
+      // if login success, create accessToken and refreshToken
+      const accessToken = createAccessToken({ id: user._id });
+      const refreshToken = createRefreshToken({ id: user._id });
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        path: '/user/refresh_token',
+      });
+
+      res.json({ accessToken });
+    } catch (err) {
+      return res.status(500).json({ msg: err.message });
+    }
+  },
+  logout: async (req, res) => {
+    try {
+      res.clearCookie('refreshToken', { path: '/user/refresh_token' });
+      res.json({ msg: 'logged out' });
+    } catch (err) {
+      return res.status(500).json({ msg: err.message });
+    }
+  },
   refreshToken: (req, res) => {
     try {
       const rf_token = req.cookies.refreshToken;
@@ -57,8 +90,8 @@ const userCtrl = {
         const accessToken = createAccessToken({ id: user.id });
         res.json({ accessToken });
       });
-    } catch (error) {
-      return res.status(500).json({ msg: error.message });
+    } catch (err) {
+      return res.status(500).json({ msg: err.message });
     }
   },
 };
