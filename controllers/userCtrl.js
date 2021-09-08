@@ -55,7 +55,7 @@ const userCtrl = {
           return res.status(400).json({ msg: 'please login or register' });
 
         const accessToken = createAccessToken({ id: user.id });
-        res.json({ user, accessToken });
+        res.json({ accessToken });
       });
     } catch (error) {
       return res.status(500).json({ msg: error.message });
